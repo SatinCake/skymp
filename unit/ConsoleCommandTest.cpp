@@ -1,13 +1,11 @@
 #include "TestUtils.hpp"
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 #include "PacketParser.h"
 
-using Catch::Matchers::Contains;
+using Catch::Matchers::ContainsSubstring;
 
 PartOne& GetPartOne();
-
-int kValidAdminUserId = 479;
 
 TEST_CASE("ConsoleCommand packet is parsed", "[ConsoleCommand]")
 {
@@ -67,9 +65,10 @@ TEST_CASE("AddItem doesn't execute for non-privilleged users",
   ActionListener::RawMessageData msgData;
   msgData.userId = 0;
 
-  REQUIRE_THROWS_WITH(p.GetActionListener().OnConsoleCommand(
-                        msgData, "additem", { 0x14, 0x12eb7, 0x108 }),
-                      Contains("Not enough permissions to use this command"));
+  REQUIRE_THROWS_WITH(
+    p.GetActionListener().OnConsoleCommand(msgData, "additem",
+                                           { 0x14, 0x12eb7, 0x108 }),
+    ContainsSubstring("Not enough permissions to use this command"));
 
   p.DestroyActor(0xff000000);
   DoDisconnect(p, 0);
@@ -83,7 +82,7 @@ TEST_CASE("AddItem executes", "[ConsoleCommand][espm]")
   p.CreateActor(0xff000000, { 0, 0, 0 }, 0, 0x3c);
   p.SetUserActor(0, 0xff000000);
   auto& ac = p.worldState.GetFormAt<MpActor>(0xff000000);
-  ac.RegisterProfileId(kValidAdminUserId);
+  ac.SetConsoleCommandsAllowedFlag(true);
   ac.RemoveAllItems();
 
   ActionListener::RawMessageData msgData;
@@ -121,7 +120,7 @@ TEST_CASE("PlaceAtMe executes", "[ConsoleCommand][espm]")
   p.CreateActor(0xff000000, { 0, 0, 0 }, 0, 0x3c);
   p.SetUserActor(0, 0xff000000);
   auto& ac = p.worldState.GetFormAt<MpActor>(0xff000000);
-  ac.RegisterProfileId(kValidAdminUserId);
+  ac.SetConsoleCommandsAllowedFlag(true);
 
   ActionListener::RawMessageData msgData;
   msgData.userId = 0;

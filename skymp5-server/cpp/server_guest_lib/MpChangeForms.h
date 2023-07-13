@@ -1,4 +1,5 @@
 #pragma once
+#include "ActorValues.h"
 #include "Appearance.h"
 #include "DynamicFields.h"
 #include "Equipment.h"
@@ -6,15 +7,46 @@
 #include "Inventory.h"
 #include "LocationalData.h"
 #include "NiPoint3.h"
-#include <boost/pfr.hpp>
 #include <cstdint>
 #include <optional>
 #include <ostream>
+#include <set>
 #include <string>
 #include <tuple>
 
 class MpObjectReference;
 class WorldState;
+
+struct LearnedSpells
+{
+  using Data = std::set<uint32_t>;
+
+  void LearnSpell(Data::key_type baseId);
+
+  [[nodiscard]] size_t Count() const noexcept;
+
+  [[nodiscard]] bool IsSpellLearned(Data::key_type baseId) const;
+
+  std::vector<Data::key_type> GetLearnedSpells() const;
+
+  friend bool operator==(const LearnedSpells& lhs, const LearnedSpells& rhs)
+  {
+    return lhs._learnedSpellIds == rhs._learnedSpellIds;
+  }
+
+  friend bool operator!=(const LearnedSpells& lhs, const LearnedSpells& rhs)
+  {
+    return !(lhs == rhs);
+  }
+
+  friend bool operator<(const LearnedSpells& lhs, const LearnedSpells& rhs)
+  {
+    return lhs._learnedSpellIds < rhs._learnedSpellIds;
+  }
+
+private:
+  Data _learnedSpellIds{};
+};
 
 class MpChangeFormREFR
 {
@@ -32,6 +64,8 @@ public:
   NiPoint3 angle = { 0, 0, 0 };
   FormDesc worldOrCellDesc;
   Inventory inv;
+  LearnedSpells learnedSpells;
+
   bool isHarvested = false;
   bool isOpen = false;
   bool baseContainerAdded = false;
@@ -41,49 +75,52 @@ public:
 
   bool isRaceMenuOpen = false;
   bool isDead = false;
+  bool consoleCommandsAllowed = false;
 
   // 'appearanceDump' and 'equipmentDump' can be empty. it means nullopt.
   // "unexisting" equipment and equipment with zero entries are different
   // values in skymp due to poor design
   std::string appearanceDump, equipmentDump;
-  float healthPercentage = 1.0f;
-  float magickaPercentage = 1.0f;
-  float staminaPercentage = 1.0f;
+  ActorValues actorValues;
   LocationalData spawnPoint = { { 133857, -61130, 14662 },
                                 { 0.f, 0.f, 72.f },
                                 FormDesc::Tamriel() };
   float spawnDelay = 5.0f;
 
-  // Much attention to 'MpActor::GetChangeForm()' and 'ActorTest.cpp' when
-  // adding new Actor-related rows
+  // Please update 'ActorTest.cpp' when adding new Actor-related rows
 
   DynamicFields dynamicFields;
-};
 
-class MpChangeForm : public MpChangeFormREFR
-{
-public:
   auto ToTuple() const
   {
-    return boost::pfr::structure_to_tuple(
-      static_cast<const MpChangeFormREFR&>(*this));
+    return std::make_tuple(
+      recType, formDesc, baseDesc, position.x, position.y, position.z, angle.x,
+      angle.y, angle.z, worldOrCellDesc, inv.ToJson(), isHarvested, isOpen,
+      baseContainerAdded, nextRelootDatetime, isDisabled, profileId,
+      isRaceMenuOpen, isDead, consoleCommandsAllowed, appearanceDump,
+      equipmentDump, actorValues.ToTuple(), spawnPoint, dynamicFields,
+      spawnDelay, learnedSpells);
   }
 
-  static nlohmann::json ToJson(const MpChangeForm& changeForm);
-  static MpChangeForm JsonToChangeForm(simdjson::dom::element& element);
+  static nlohmann::json ToJson(const MpChangeFormREFR& changeForm);
+  static MpChangeFormREFR JsonToChangeForm(simdjson::dom::element& element);
 };
 
-inline bool operator==(const MpChangeForm& lhs, const MpChangeForm& rhs)
+#define MpChangeForm MpChangeFormREFR
+
+inline bool operator==(const MpChangeFormREFR& lhs,
+                       const MpChangeFormREFR& rhs)
 {
   return lhs.ToTuple() == rhs.ToTuple();
 }
 
-inline bool operator!=(const MpChangeForm& lhs, const MpChangeForm& rhs)
+inline bool operator!=(const MpChangeFormREFR& lhs,
+                       const MpChangeFormREFR& rhs)
 {
   return !(lhs == rhs);
 }
 
-inline bool operator<(const MpChangeForm& lhs, const MpChangeForm& rhs)
+inline bool operator<(const MpChangeFormREFR& lhs, const MpChangeFormREFR& rhs)
 {
   return lhs.ToTuple() < rhs.ToTuple();
 }

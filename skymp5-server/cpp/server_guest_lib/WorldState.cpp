@@ -1,6 +1,5 @@
 #include "WorldState.h"
 #include "FormCallbacks.h"
-#include "GroupUtils.h"
 #include "HeuristicPolicy.h"
 #include "ISaveStorage.h"
 #include "MpActor.h"
@@ -13,14 +12,16 @@
 #include "PapyrusForm.h"
 #include "PapyrusFormList.h"
 #include "PapyrusGame.h"
+#include "PapyrusKeyword.h"
 #include "PapyrusMessage.h"
 #include "PapyrusObjectReference.h"
 #include "PapyrusSkymp.h"
 #include "PapyrusUtility.h"
-#include "Reader.h"
 #include "ScopedTask.h"
 #include "ScriptStorage.h"
 #include "Timer.h"
+#include "libespm/GroupUtils.h"
+#include "papyrus-vm/Reader.h"
 #include <algorithm>
 #include <deque>
 #include <unordered_map>
@@ -355,8 +356,8 @@ bool WorldState::LoadForm(uint32_t formId)
     auto& refr = GetFormAt<MpObjectReference>(formId);
     auto it = pImpl->changeFormsForDeferredLoad.find(formId);
     if (it != pImpl->changeFormsForDeferredLoad.end()) {
-      refr.ApplyChangeForm(it->second);
-      pImpl->changeFormsForDeferredLoad.erase(it);
+      auto copy = it->second; // crashes without copying
+      refr.ApplyChangeForm(copy);
     }
 
     refr.ForceSubscriptionsUpdate();
@@ -609,8 +610,9 @@ VirtualMachine& WorldState::GetPapyrusVm()
       pImpl->classes.emplace_back(std::make_unique<PapyrusSkymp>());
       pImpl->classes.emplace_back(std::make_unique<PapyrusUtility>());
       pImpl->classes.emplace_back(std::make_unique<PapyrusEffectShader>());
+      pImpl->classes.emplace_back(std::make_unique<PapyrusKeyword>());
       for (auto& cl : pImpl->classes) {
-        cl->Register(*pImpl->vm, pImpl->policy);
+        cl->Register(*pImpl->vm, pImpl->policy, this);
       }
     }
   }
