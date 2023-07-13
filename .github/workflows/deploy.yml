@@ -10,7 +10,7 @@ on:
                 description: branch, meaning server instance (sweetpie/indev)
                 required: true
                 default: indev
-
+                
 env:
     BUILD_TYPE: RelWithDebInfo
 
